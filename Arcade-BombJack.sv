@@ -199,6 +199,12 @@ wire [1:0] ar = status[22:21];
 assign VIDEO_ARX = (!ar) ? ((status[2])  ? 12'd2560 : 12'd2191) : (ar - 1'd1);
 assign VIDEO_ARY = (!ar) ? ((status[2])  ? 12'd2191 : 12'd2560) : 12'd0;
 
+// Status Bit Map:
+//              Upper                          Lower
+// 0         1         2         3          4         5         6
+// 01234567890123456789012345678901 23456789012345678901234567890123
+// 0123456789ABCDEFGHIJKLMNOPQRSTUV 0123456789ABCDEFGHIJKLMNOPQRSTUV
+// X XXXX XXXXXXXXXXXXX XXX XXXXXXX XXXX
 
 `include "build_id.v" 
 localparam CONF_STR = {
@@ -206,20 +212,23 @@ localparam CONF_STR = {
 	"H0OLM,Aspect ratio,Original,Full Screen,[ARC1],[ARC2];",
 	"H0O2,Orientation,Vert,Horz;",
 	"O35,Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%,CRT 75%;",
-	"-;",
 	"ON,Flip Screen,Off,On;",
-	"O7,Demo Sounds,On,Off;",
-	"O89,Lives,3,4,5,2;",
-	"OAB,Bonus,500k,750k;",
-	"OC,Cabinet,Upright,Cocktail;",
-	"ODE,Enemy num & speed,Easy,Medium,Hard,Insane;",
-	"OIJ,Bird Speed,Easy,Medium,Hard,Insane;",
-	"OFH,Bonus Life,None,Every 100k,Every 30k,50k only,100k only,50k and 100k,100k and 300k,50k and 100k and 300k;",
+	"O[31:28],CRT H adjust,0,+1,+2,+3,+4,+5,+6,+7,-8,-7,-6,-5,-4,-3,-2,-1;",
+	"O[35:32],CRT V adjust,0,+1,+2,+3,+4,+5,+6,+7,-8,-7,-6,-5,-4,-3,-2,-1;",
+	"-;",
+	"P1,DIP Switches;",
+	"P1O7,Demo Sounds,On,Off;",
+	"P1O89,Lives,3,4,5,2;",
+	"P1OAB,Bonus,500k,750k;",
+	"P1OC,Cabinet,Upright,Cocktail;",
+	"P1ODE,Enemy num & speed,Easy,Medium,Hard,Insane;",
+	"P1OIJ,Bird Speed,Easy,Medium,Hard,Insane;",
+	"P1OFH,Bonus Life,None,Every 100k,Every 30k,50k only,100k only,50k and 100k,100k and 300k,50k and 100k and 300k;",
 	"-;",
 	"H1OR,Autosave Hiscores,Off,On;",
-	"P1,Pause options;",
-	"P1OP,Pause when OSD is open,On,Off;",
-	"P1OQ,Dim video after 10s,On,Off;",
+	"P2,Pause options;",
+	"P2OP,Pause when OSD is open,On,Off;",
+	"P2OQ,Dim video after 10s,On,Off;",
 	"-;",
 	"R0,Reset;",
 	"J1,Jump,Start 1P,Start 2P,Coin,Pause;",
@@ -245,7 +254,7 @@ pll pll
 
 ///////////////////////////////////////////////////
 
-wire [31:0] status;
+wire [63:0] status;
 wire  [1:0] buttons;
 wire        forced_scandoubler;
 wire        direct_video;
@@ -338,6 +347,21 @@ wire video_rotated;
 
 screen_rotate screen_rotate (.*);
 
+wire [3:0] hs_offset = status[31:28];
+wire [3:0] vs_offset = status[35:32];
+hvsync_gen #(.HS_POS(32), .VS_POS(13)) hvsync_gen
+(
+	.clk(CLK_VIDEO),
+	.ce_pix(ce_pix),
+	.hblank(hblank),
+	.vblank(vblank),
+	.hs_offset(hs_offset),
+	.vs_offset(vs_offset),
+
+	.hsync_o(hs),
+	.vsync_o(vs)
+);
+
 arcade_video #(270,12) arcade_video
 (
         .*,
@@ -401,8 +425,8 @@ bombjack_top bombjack_top
 	.VGA_R(r),
 	.VGA_G(g),
 	.VGA_B(b),
-	.VGA_HS(hs),
-	.VGA_VS(vs),
+//	.VGA_HS(hs),
+//	.VGA_VS(vs),
 	.O_VBLANK(vblank),
 	.O_HBLANK(hblank),
 
