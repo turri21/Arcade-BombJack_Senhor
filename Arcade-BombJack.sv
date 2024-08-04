@@ -204,7 +204,7 @@ assign VIDEO_ARY = (!ar) ? ((status[2])  ? 12'd2191 : 12'd2560) : 12'd0;
 // 0         1         2         3          4         5         6
 // 01234567890123456789012345678901 23456789012345678901234567890123
 // 0123456789ABCDEFGHIJKLMNOPQRSTUV 0123456789ABCDEFGHIJKLMNOPQRSTUV
-// X XXXX XXXXXXXXXXXXX XXX XXXXXXX XXXX
+// X XXXXXXXXXXXXXXXXXX XXX XXXXXXX XXXX
 
 `include "build_id.v" 
 localparam CONF_STR = {
@@ -213,6 +213,7 @@ localparam CONF_STR = {
 	"H0O2,Orientation,Vert,Horz;",
 	"O35,Scandoubler Fx,None,HQ2x,CRT 25%,CRT 50%,CRT 75%;",
 	"ON,Flip Screen,Off,On;",
+	"O[6],Game Speed,Native,60Hz;",
 	"O[31:28],CRT H adjust,0,+1,+2,+3,+4,+5,+6,+7,-8,-7,-6,-5,-4,-3,-2,-1;",
 	"O[35:32],CRT V adjust,0,+1,+2,+3,+4,+5,+6,+7,-8,-7,-6,-5,-4,-3,-2,-1;",
 	"-;",
@@ -239,18 +240,77 @@ localparam CONF_STR = {
 
 ////////////////////   CLOCKS   ///////////////////
 
-wire clk_sys, clk_vid,clk_24;
+wire clk_sys;
 wire pll_locked;
+wire [63:0] reconfig_to_pll;
+wire [63:0] reconfig_from_pll;
 
 pll pll
 (
 	.refclk(CLK_50M),
 	.rst(0),
 	.outclk_0(clk_sys), // 48
-	.outclk_1(clk_vid), // 6
-	.outclk_2(clk_24),  // 24
+	.reconfig_to_pll(reconfig_to_pll),
+	.reconfig_from_pll(reconfig_from_pll),
 	.locked(pll_locked)
 );
+
+wire        cfg_waitrequest;
+reg         cfg_write;
+reg   [5:0] cfg_address;
+reg  [31:0] cfg_data;
+
+//Reconfigure PLL to apply an overclock to bring video timings in spec for 60Hz VSync
+pll_cfg pll_cfg
+(
+	.mgmt_clk(CLK_50M),
+	.mgmt_reset(0),
+	.mgmt_waitrequest(cfg_waitrequest),
+	.mgmt_read(0),
+	.mgmt_readdata(),
+	.mgmt_write(cfg_write),
+	.mgmt_address(cfg_address),
+	.mgmt_writedata(cfg_data),
+	.reconfig_to_pll(reconfig_to_pll),
+	.reconfig_from_pll(reconfig_from_pll)
+);
+
+always @(posedge CLK_50M) begin
+	reg overclock = 0, overclock2 = 0;
+	reg [2:0] state = 0;
+	reg overclock_r;
+
+	overclock <= status[6];
+	overclock2 <= overclock;
+
+	cfg_write <= 0;
+	if(overclock2 == overclock && overclock2 != overclock_r) begin
+		state <= 1;
+		overclock_r <= overclock2;
+	end
+
+	if(!cfg_waitrequest) begin
+		if(state)
+			state <= state + 1'd1;
+		case(state)
+			1: begin
+				cfg_address <= 0;
+				cfg_data <= 0;
+				cfg_write <= 1;
+			end
+			5: begin
+				cfg_address <= 7;
+				cfg_data <= overclock_r ? 3221912667 : 2748778984;
+				cfg_write <= 1;
+			end
+			7: begin
+				cfg_address <= 2;
+				cfg_data <= 0;
+				cfg_write <= 1;
+			end
+		endcase
+	end
+end
 
 ///////////////////////////////////////////////////
 
