@@ -287,9 +287,6 @@ begin
 
 	RESETn				<= not I_RESET;		-- active low reset
 
-	O_HBLANK <= s_256H_r;
-
-
 	-- HISCORE MUX
 	hs_enable_1e	<= '1' when (hs_address(15 downto 11) = "10000"   ) else '0'; -- 0x8000 - 0x87ff
 	hs_enable_6lm	<= '1' when (hs_address(15 downto 11) = "10010"   ) else '0'; -- 0x9000 - 0x97ff
@@ -562,6 +559,7 @@ begin
 		O_CMPBLK_n_r		=> s_cmpblk_n_r,
 		O_CMPBLK_n			=> s_cmpblk_n,
 --		O_CMPBLK				=> open,
+		O_HBLANK_r			=> O_HBLANK,
 		O_VBLANK_n			=> s_vblank_n,
 		O_VBLANK				=> s_vblank_t0,
 		O_VBLANK_r        => O_VBLANK,
