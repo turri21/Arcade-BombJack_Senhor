@@ -1,3 +1,7 @@
+-=(BombJack_Senhor notes)=-
+
+Tested: Working Video 720p, 1080p & Sound.
+
 ---------------------------------------------------------------------------------
 -- 
 -- Arcade: Bomb Jack port to MiSTer by Sorgelig
